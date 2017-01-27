@@ -1,0 +1,18 @@
+{
+  "paths": {
+    "dist": {
+      "scripts": "./public/js",
+      "styles": "./public/css",
+      "vendor": "./public/lib",
+      "views": "./src/views"
+    },
+    "bower": "./bower.json",
+    "inject": "./public",
+    "views": "./src/views",
+    "jadeFiles": "./src/views/**/*.pug",
+    "scripts": ["*.js", "public/js/**/*.js"],
+    "styles": "./src/sass/**/*.scss",
+    "ts": ["./src/ts/**/*.ts"],
+    "tsconfig": "tsconfig.json"
+  }
+}
