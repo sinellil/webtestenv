@@ -114,6 +114,21 @@ require('gulp-grunt')(gulp, {
 });
 // -------------------------------------------------
 
+gulp.task('inject', function() {
+    var wiredep = require('wiredep').stream;
+    var inject = require('gulp-inject');
+    var options = {
+        bowerJson: require(config.paths.bower),
+        directory: config.paths.dist.vendor,
+        ignorePath: '../../public'
+    };
+
+    return gulp.src(config.paths.jadeFiles)
+        .pipe(wiredep(options))
+        .pipe(inject(gulp.src(config.paths.inject, {read: false}), {ignorePath: '/public'}))
+        .pipe(gulp.dest(config.paths.views));
+});
+
 gulp.task('jshint', function () {
     return gulp.src(['./dist/**/*.js', '!dist/core/lib/**/*.*', '!**/*.min.js', '!dist/core/css/**/*.*'])
         .pipe(plumber({
@@ -148,7 +163,7 @@ gulp.task('tslint', ['copy'], function () {
             emitError: false,
             sort: true,
             bell: true
-        }))
+        }));
 });
 
 gulp.task("sass", function() {
