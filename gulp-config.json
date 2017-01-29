@@ -1,6 +1,8 @@
 {
   "paths": {
+    "copy": ["./build"],
     "dist": {
+      "root": "./public",
       "scripts": "./public/js",
       "styles": "./public/css",
       "vendor": "./public/lib",
