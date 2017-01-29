@@ -25,21 +25,22 @@ args = require('yargs').argv,
 fs = require('fs');
 
 var cfg = require('./gulp-config.json');
+var tsPrj = ts.createProject(cfg.paths.tsconfig);
 
 var onError = function(err) {
     console.log(err);
 };
 
 gulp.task('default', function() {
-    runSequence('clean-dist', 'copy',
-        ['minifyhtml', 'minifyimage', 'grunt-merge-json:menu', 'jshint', 'tscompile',
+    runSequence('clean-dist', 'copy', 'inject',
+        ['minifyhtml', 'minifyimage', 'jshint', 'tscompile',
             'tslint', 'sass', 'scsslint'],
         ['uglifyalljs', 'minifycss'],
         'watch');
 });
 
 gulp.task('clean-dist', function () {
-    return gulp.src(cfg.paths.dist.root, {read: false})
+    return gulp.src(cfg.paths.dist.clean, {read: false})
         .pipe(plumber({
             errorHandler: onError
         }))
@@ -118,15 +119,15 @@ gulp.task('inject', function() {
     var wiredep = require('wiredep').stream;
     var inject = require('gulp-inject');
     var options = {
-        bowerJson: require(config.paths.bower),
-        directory: config.paths.dist.vendor,
+        bowerJson: require(cfg.paths.bower),
+        directory: cfg.paths.dist.vendor,
         ignorePath: '../../public'
     };
 
-    return gulp.src(config.paths.jadeFiles)
+    return gulp.src(cfg.paths.jadeFiles)
         .pipe(wiredep(options))
-        .pipe(inject(gulp.src(config.paths.inject, {read: false}), {ignorePath: '/public'}))
-        .pipe(gulp.dest(config.paths.views));
+        .pipe(inject(gulp.src(cfg.paths.inject, {read: false}), {ignorePath: '/public'}))
+        .pipe(gulp.dest(cfg.paths.views));
 });
 
 gulp.task('jshint', function () {
@@ -136,11 +137,11 @@ gulp.task('jshint', function () {
         }))
         .pipe(jshint('.jshintrc'))
         .pipe(jshint.reporter(stylish))
-        .pipe(jshint.reporter('gulp-jshint-html-reporter', { filename: 'jshint-output.html' }));
+        .pipe(jshint.reporter('gulp-jshint-html-reporter', {filename: 'jshint-output.html'}));
 });
 
 gulp.task('tscompile', function () {
-    return gulp.src(['./dist/**/*.ts', '!dist/core/lib/**/*.*', '!dist/core/css/**/*.*'])
+    return gulp.src(cfg.paths.ts)
         .pipe(plumber({
             errorHandler: onError
         }))
@@ -150,12 +151,11 @@ gulp.task('tscompile', function () {
             declarationFiles: false,
             noResolve: true
         }))
-        .pipe(rename({extname: '.js'}))
-        .pipe(gulp.dest('dist/./'));
+        .pipe(gulp.dest(cfg.paths.dist.scripts));
 });
 
 gulp.task('tslint', ['copy'], function () {
-    return gulp.src(['./dist/**/*.ts', '!dist/core/lib/**/*.*', '!dist/core/css/**/*.*'])
+    return gulp.src(cfg.paths.ts)
         .pipe(tslint({
             formatter: 'verbose'
         }))
@@ -195,67 +195,29 @@ gulp.task('watch', function () {
     // ---------------------------------------------------------------
     // Watching JS files
     // ---------------------------------------------------------------
-    // Copy all files except *.js files.
-    gulp.watch(['src/**/*', '!src/**/*.js', '!bower_components/**.*'], function () { runSequence('copy'); });
-
-    // Annotates and copies *.js files
-    gulp.watch(['src/**/*.js',
-        '!src/core/config/route.config.js', '!src/apps/**/route.config.js',
-        '!bower_components/**/*.js'], function () { runSequence('watch:annotate', 'copy'); });
-
-    // routeConfig file changes.
-    gulp.watch(['src/core/config/route.config.js', 'src/apps/**/route.config.js'], function () { runSequence('routeconfig'); });
 
     // Uglify JS files
-    gulp.watch(['dist/**/*.js', '!dist/**/*.min.js', '!dist/core/lib/**/*', '!dist/core/common/**/*'], function () { runSequence('uglifyalljs'); });
-
-
-    // ---------------------------------------------------------------
-    // Watching Bower components
-    // ---------------------------------------------------------------
-    gulp.watch(['bower_components/**/*.js'], function () { runSequence('libs'); });
-    // TODO: Add other bower component types like css, scss and images
-
+    gulp.watch(cfg.paths.dist.scripts, function () { runSequence('uglifyalljs'); });
 
     // ---------------------------------------------------------------
     // Watching css and scss files
     // ---------------------------------------------------------------
-    gulp.watch(['dist/**/*.css', '!dist/**/*.min.css', '!dist/core/lib/**/*'], function () { runSequence('minifycss'); });
-    gulp.watch(['dist/**/*.scss', '!dist/core/lib/**/*'], function () { runSequence('sass'); });
+    gulp.watch(cfg.paths.dist.styles, function () { runSequence('minifycss'); });
+    gulp.watch(cfg.paths.styles, function () { runSequence(['sass', 'scsslint']); });
 
     // ---------------------------------------------------------------
     // Watching TypeScript files
     // ---------------------------------------------------------------
-    gulp.watch(['dist/**/*.ts', '!dist/core/lib/**/*.*', '!dist/core/css/**/*.*'], function () { runSequence('tscompile'); });
+    gulp.watch(cfg.paths.ts, function () { runSequence('tscompile'); });
 
     // ---------------------------------------------------------------
     // Watch - Execute linters
     // ---------------------------------------------------------------
-    gulp.watch(['dist/**/*.ts', '!dist/core/lib/**/*.*', '!dist/core/css/**/*.*'], function () { runSequence('tslint'); });
-    //gulp.watch(['dist/**/*.js', '!dist/core/lib/**/*.*', '!dist/**/*.min.js', '!dist/core/css/**/*.*'], function() { runSequence('jshint'); });
+    gulp.watch(cfg.paths.ts, function () { runSequence('tslint'); });
 
 
-    gulp.watch(['dist/**/*.js', '!dist/core/lib/**/*.*', '!dist/**/*.min.js', '!dist/core/css/**/*.*'], ['jshint']);
+    gulp.watch(cfg.paths.scripts, ['jshint']);
 
-    // ---------------------------------------------------------------
-    // Watching image files
-    // ---------------------------------------------------------------
-    // unable to get this watch to ever notice a file changed.  This will be handled on the initial build.
-    //gulp.watch(['dist/**/*.{png,jpg,gif,ico}', '!dist/core/lib/**/*.*', '!dist/core/css/**/*.*'], function() { runSequence('minifyimage'); });
-
-});
-
-// ---------------------------------------------------------------
-// Watch specific tasks.  This is to support the use of newer.
-// ---------------------------------------------------------------
-gulp.task('watch:annotate', function () {
-    return gulp.src(['src/index.controller.js', 'src/core/**/*.js', 'src/apps/**/*.js', '!src/core/lib/**/*', '!/**/*.min.js'], { base: 'src/./' })
-        .pipe(plumber({
-            errorHandler: onError
-        }))
-        .pipe(newer('src/./'))
-        .pipe(ngAnnotate())
-        .pipe(gulp.dest('src/./'));
 });
 
 gulp.task('setEnv', function () {

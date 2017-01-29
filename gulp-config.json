@@ -1,7 +1,8 @@
 {
   "paths": {
-    "copy": ["./build"],
+    "copy": ["./build/**/*"],
     "dist": {
+      "clean": ["./public/js", "public/css"],
       "root": "./public",
       "scripts": "./public/js",
       "styles": "./public/css",
